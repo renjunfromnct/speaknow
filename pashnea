@@ -1,0 +1,96 @@
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+-- Remotes
+local HeatWave = ReplicatedStorage.RemoteEvents.Abilities["Heat Wave"]
+local TidalWave = ReplicatedStorage.RemoteEvents.Abilities["Tidal Wave"]
+
+-- Player GUI
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "WaveAbilitiesGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Function to create draggable circular buttons
+local function createAbilityButton(name, emoji, color, position, onClick)
+	local button = Instance.new("TextButton")
+	button.Name = name
+	button.Size = UDim2.new(0, 80, 0, 80)
+	button.Position = position
+	button.Text = emoji
+	button.BackgroundColor3 = color
+	button.TextScaled = true
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.Font = Enum.Font.SourceSansBold
+	button.Parent = screenGui
+
+	-- Circle corners
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = button
+
+	-- Draggable
+	local dragging = false
+	local dragInput, dragStart, startPos
+
+	local function update(input)
+		local delta = input.Position - dragStart
+		button.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+
+	button.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = button.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	button.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			update(input)
+		end
+	end)
+
+	-- Click event
+	button.MouseButton1Click:Connect(onClick)
+end
+
+-- Create Heat Wave Button 🔥
+createAbilityButton("HeatWaveButton", "🔥", Color3.fromRGB(255, 85, 0), UDim2.new(0.4, -90, 0.85, 0), function()
+	HeatWave:FireServer(
+		Vector3.new(150, 35, -193),
+		CFrame.new(153, 40, -201, -1, 0, -0, 0, 1, 0, 0, 0, -1)
+	)
+end)
+
+-- Create Tidal Wave Button 🌊
+createAbilityButton("TidalWaveButton", "🌊", Color3.fromRGB(0, 170, 255), UDim2.new(0.6, 10, 0.85, 0), function()
+	TidalWave:FireServer(
+		Vector3.new(168, 6, 67),
+		CFrame.new(184, 13, 90, 0, -0, 1, 0, 1, 0, -1, -0, 0)
+	)
+end)
