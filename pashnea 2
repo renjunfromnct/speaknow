@@ -2,11 +2,13 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService") -- Added
 
 -- RemoteEvents
 local SplittingSeas = ReplicatedStorage.RemoteEvents.Abilities["Splitting Seas"]
 local WaterOrb = ReplicatedStorage.RemoteEvents.Abilities["Water Orb"]
 local WaveRide = ReplicatedStorage.RemoteEvents.Abilities["Wave Ride"]
+local Restoration = ReplicatedStorage.RemoteEvents.Abilities["Restoration"] -- New
 
 -- Player GUI
 local player = Players.LocalPlayer
@@ -43,7 +45,7 @@ lockButton.MouseButton1Click:Connect(function()
 	lockButton.Text = draggableEnabled and "🔓" or "🔒"
 end)
 
--- Function to create draggable ability buttons
+-- Function to create draggable ability buttons with hover glow
 local function createAbilityButton(name, emoji, color, position, onClick)
 	local button = Instance.new("TextButton")
 	button.Name = name
@@ -57,12 +59,28 @@ local function createAbilityButton(name, emoji, color, position, onClick)
 	button.Font = Enum.Font.SourceSansBold
 	button.Parent = screenGui
 
-	-- Round shape
+	-- Squircle
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(1, 0)
+	corner.CornerRadius = UDim.new(0.4, 0)
 	corner.Parent = button
 
-	-- Draggable variables
+	-- Border glow
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.new(1, 1, 1)
+	stroke.Thickness = 2
+	stroke.Transparency = 0.6
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = button
+
+	button.MouseEnter:Connect(function()
+		TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0}):Play()
+	end)
+
+	button.MouseLeave:Connect(function()
+		TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0.6}):Play()
+	end)
+
+	-- Draggable logic
 	local dragging = false
 	local dragInput, dragStart, startPos
 
@@ -103,14 +121,13 @@ local function createAbilityButton(name, emoji, color, position, onClick)
 		end
 	end)
 
-	-- OnClick event
 	button.MouseButton1Click:Connect(onClick)
 end
 
--- Vertical Layout
+-- Layout
 local startX = 0.05
 local startY = 0.6
-local spacing = 70
+local spacing = 0.07
 
 -- 💧 Splitting Seas
 createAbilityButton("SplittingSeasButton", "💧", Color3.fromRGB(0, 200, 255), UDim2.new(startX, 0, startY, 0), function()
@@ -121,7 +138,7 @@ createAbilityButton("SplittingSeasButton", "💧", Color3.fromRGB(0, 200, 255), 
 end)
 
 -- 💦 Water Orb
-createAbilityButton("WaterOrbButton", "💦", Color3.fromRGB(90, 180, 255), UDim2.new(startX, 0, startY + 0.07, 0), function()
+createAbilityButton("WaterOrbButton", "💦", Color3.fromRGB(90, 180, 255), UDim2.new(startX, 0, startY + spacing, 0), function()
 	WaterOrb:FireServer(
 		Vector3.new(155, 53, -156),
 		CFrame.new(159, 67, -169, -1, 0, -0, 0, 1, 1, 1, 1, -1)
@@ -129,10 +146,19 @@ createAbilityButton("WaterOrbButton", "💦", Color3.fromRGB(90, 180, 255), UDim
 end)
 
 -- 🌊 Wave Ride
-createAbilityButton("WaveRideButton", "🌊", Color3.fromRGB(0, 140, 255), UDim2.new(startX, 0, startY + 0.14, 0), function()
+createAbilityButton("WaveRideButton", "🌊", Color3.fromRGB(0, 140, 255), UDim2.new(startX, 0, startY + spacing * 2, 0), function()
 	WaveRide:FireServer(
 		Vector3.new(154, 53, -155),
 		CFrame.new(159, 67, -169, -1, 0, -0, 0, 1, 1, 1, 1, -1),
 		1
+	)
+end)
+
+-- 🌀 Restoration
+createAbilityButton("RestorationButton", "🌀", Color3.fromRGB(100, 220, 180), UDim2.new(startX, 0, startY + spacing * 3, 0), function()
+	Restoration:FireServer(
+		Vector3.new(-164, 30, 162),
+		CFrame.new(-178, 41, 175, 1, 0, -0, 0, 1, 1, 0, -1, 1),
+		5
 	)
 end)
