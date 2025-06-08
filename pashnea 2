@@ -1,0 +1,138 @@
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+-- RemoteEvents
+local SplittingSeas = ReplicatedStorage.RemoteEvents.Abilities["Splitting Seas"]
+local WaterOrb = ReplicatedStorage.RemoteEvents.Abilities["Water Orb"]
+local WaveRide = ReplicatedStorage.RemoteEvents.Abilities["Wave Ride"]
+
+-- Player GUI
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- GUI container
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AbilityButtonsGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Global draggable toggle
+local draggableEnabled = true
+
+-- Lock Toggle Button
+local lockButton = Instance.new("TextButton")
+lockButton.Name = "LockToggle"
+lockButton.Size = UDim2.new(0, 40, 0, 40)
+lockButton.Position = UDim2.new(0.05, 70, 0.6, 0)
+lockButton.Text = "🔓"
+lockButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+lockButton.BackgroundTransparency = 0.2
+lockButton.TextColor3 = Color3.new(1, 1, 1)
+lockButton.Font = Enum.Font.SourceSansBold
+lockButton.TextScaled = true
+lockButton.Parent = screenGui
+
+local lockCorner = Instance.new("UICorner")
+lockCorner.CornerRadius = UDim.new(1, 0)
+lockCorner.Parent = lockButton
+
+lockButton.MouseButton1Click:Connect(function()
+	draggableEnabled = not draggableEnabled
+	lockButton.Text = draggableEnabled and "🔓" or "🔒"
+end)
+
+-- Function to create draggable ability buttons
+local function createAbilityButton(name, emoji, color, position, onClick)
+	local button = Instance.new("TextButton")
+	button.Name = name
+	button.Size = UDim2.new(0, 60, 0, 60)
+	button.Position = position
+	button.Text = emoji
+	button.BackgroundColor3 = color
+	button.BackgroundTransparency = 0.3
+	button.TextScaled = true
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.Font = Enum.Font.SourceSansBold
+	button.Parent = screenGui
+
+	-- Round shape
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = button
+
+	-- Draggable variables
+	local dragging = false
+	local dragInput, dragStart, startPos
+
+	local function update(input)
+		local delta = input.Position - dragStart
+		button.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+
+	button.InputBegan:Connect(function(input)
+		if not draggableEnabled then return end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = button.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	button.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging and draggableEnabled then
+			update(input)
+		end
+	end)
+
+	-- OnClick event
+	button.MouseButton1Click:Connect(onClick)
+end
+
+-- Vertical Layout
+local startX = 0.05
+local startY = 0.6
+local spacing = 70
+
+-- 💧 Splitting Seas
+createAbilityButton("SplittingSeasButton", "💧", Color3.fromRGB(0, 200, 255), UDim2.new(startX, 0, startY, 0), function()
+	SplittingSeas:FireServer(
+		Vector3.new(24, 9, -139),
+		CFrame.new(39, 16, -131, -0, -0, 1, 0, 1, 0, -1, 0, -0)
+	)
+end)
+
+-- 💦 Water Orb
+createAbilityButton("WaterOrbButton", "💦", Color3.fromRGB(90, 180, 255), UDim2.new(startX, 0, startY + 0.07, 0), function()
+	WaterOrb:FireServer(
+		Vector3.new(155, 53, -156),
+		CFrame.new(159, 67, -169, -1, 0, -0, 0, 1, 1, 1, 1, -1)
+	)
+end)
+
+-- 🌊 Wave Ride
+createAbilityButton("WaveRideButton", "🌊", Color3.fromRGB(0, 140, 255), UDim2.new(startX, 0, startY + 0.14, 0), function()
+	WaveRide:FireServer(
+		Vector3.new(154, 53, -155),
+		CFrame.new(159, 67, -169, -1, 0, -0, 0, 1, 1, 1, 1, -1),
+		1
+	)
+end)
