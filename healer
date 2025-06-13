@@ -1,0 +1,148 @@
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+-- RemoteEvents
+local GoldenEnergyShield = ReplicatedStorage.RemoteEvents.Abilities["Golden Energy Shield"]
+local CalmingCall = ReplicatedStorage.RemoteEvents.Abilities["Calming Call"]
+local Rejuvenation = ReplicatedStorage.RemoteEvents.Abilities["Rejuvenation"]
+
+-- Player GUI
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- GUI container
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AbilityButtonsGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Global draggable toggle
+local draggableEnabled = true
+
+-- Lock Toggle Button
+local lockButton = Instance.new("TextButton")
+lockButton.Name = "LockToggle"
+lockButton.Size = UDim2.new(0, 40, 0, 40)
+lockButton.Position = UDim2.new(0.05, 70, 0.6, 0)
+lockButton.Text = "🔓"
+lockButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+lockButton.BackgroundTransparency = 0.2
+lockButton.TextColor3 = Color3.new(1, 1, 1)
+lockButton.Font = Enum.Font.SourceSansBold
+lockButton.TextScaled = true
+lockButton.Parent = screenGui
+
+local lockCorner = Instance.new("UICorner")
+lockCorner.CornerRadius = UDim.new(1, 0)
+lockCorner.Parent = lockButton
+
+lockButton.MouseButton1Click:Connect(function()
+	draggableEnabled = not draggableEnabled
+	lockButton.Text = draggableEnabled and "🔓" or "🔒"
+end)
+
+-- Function to create draggable ability buttons with hover glow
+local function createAbilityButton(name, emoji, color, position, onClick)
+	local button = Instance.new("TextButton")
+	button.Name = name
+	button.Size = UDim2.new(0, 60, 0, 60)
+	button.Position = position
+	button.Text = emoji
+	button.BackgroundColor3 = color
+	button.BackgroundTransparency = 0.3
+	button.TextScaled = true
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.Font = Enum.Font.SourceSansBold
+	button.Parent = screenGui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.4, 0)
+	corner.Parent = button
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.new(1, 1, 1)
+	stroke.Thickness = 2
+	stroke.Transparency = 0.6
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = button
+
+	button.MouseEnter:Connect(function()
+		TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0}):Play()
+	end)
+
+	button.MouseLeave:Connect(function()
+		TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0.6}):Play()
+	end)
+
+	local dragging = false
+	local dragInput, dragStart, startPos
+
+	local function update(input)
+		local delta = input.Position - dragStart
+		button.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+
+	button.InputBegan:Connect(function(input)
+		if not draggableEnabled then return end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = button.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	button.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging and draggableEnabled then
+			update(input)
+		end
+	end)
+
+	button.MouseButton1Click:Connect(onClick)
+end
+
+-- Layout positions
+local startX = 0.05
+local startY = 0.6
+local spacing = 0.07
+
+-- 🛡️ Golden Energy Shield
+createAbilityButton("GoldenShieldButton", "🛡️", Color3.fromRGB(255, 215, 0), UDim2.new(startX, 0, startY, 0), function()
+	GoldenEnergyShield:FireServer(
+		Vector3.new(-185, 30, 168),
+		CFrame.new(-170, 40, 170, -1, -0, 1, 0, 1, 0, -1, 0, -1),
+		3
+	)
+end)
+
+-- 📣 Calming Call
+createAbilityButton("CalmingCallButton", "📣", Color3.fromRGB(150, 200, 255), UDim2.new(startX, 0, startY + spacing, 0), function()
+	CalmingCall:FireServer(
+		Vector3.new(-105, 5, 18),
+		CFrame.new(-118, 8, 20, 1, 0, -1, 0, 1, 0, 1, -0, 1)
+	)
+end)
+
+-- 💖 Rejuvenation
+createAbilityButton("RejuvenationButton", "💖", Color3.fromRGB(255, 100, 180), UDim2.new(startX, 0, startY + spacing * 2, 0), function()
+	Rejuvenation:FireServer(1)
+end)
