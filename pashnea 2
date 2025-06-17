@@ -2,96 +2,64 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService") -- Added
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local Terrain = workspace:FindFirstChildOfClass("Terrain")
 
 -- RemoteEvents
 local SplittingSeas = ReplicatedStorage.RemoteEvents.Abilities["Splitting Seas"]
 local WaterOrb = ReplicatedStorage.RemoteEvents.Abilities["Water Orb"]
 local WaveRide = ReplicatedStorage.RemoteEvents.Abilities["Wave Ride"]
-local Restoration = ReplicatedStorage.RemoteEvents.Abilities["Restoration"] -- New
+local Restoration = ReplicatedStorage.RemoteEvents.Abilities["Restoration"]
 
 -- Player GUI
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- Cleanup old GUI if exists
+local oldGui = playerGui:FindFirstChild("AbilityButtonsGui")
+if oldGui then
+	oldGui:Destroy()
+end
+
 -- GUI container
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AbilityButtonsGui"
 screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
 
 -- Global draggable toggle
 local draggableEnabled = true
 
--- Lock Toggle Button
-local lockButton = Instance.new("TextButton")
-lockButton.Name = "LockToggle"
-lockButton.Size = UDim2.new(0, 40, 0, 40)
-lockButton.Position = UDim2.new(0.05, 70, 0.6, 0)
-lockButton.Text = "🔓"
-lockButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-lockButton.BackgroundTransparency = 0.2
-lockButton.TextColor3 = Color3.new(1, 1, 1)
-lockButton.Font = Enum.Font.SourceSansBold
-lockButton.TextScaled = true
-lockButton.Parent = screenGui
+-- Debounce utility
+local function debounce(fn, delay)
+	local busy = false
+	return function(...)
+		if busy then return end
+		busy = true
+		fn(...)
+		task.delay(delay, function()
+			busy = false
+		end)
+	end
+end
 
-local lockCorner = Instance.new("UICorner")
-lockCorner.CornerRadius = UDim.new(1, 0)
-lockCorner.Parent = lockButton
-
-lockButton.MouseButton1Click:Connect(function()
-	draggableEnabled = not draggableEnabled
-	lockButton.Text = draggableEnabled and "🔓" or "🔒"
-end)
-
--- Function to create draggable ability buttons with hover glow
-local function createAbilityButton(name, emoji, color, position, onClick)
-	local button = Instance.new("TextButton")
-	button.Name = name
-	button.Size = UDim2.new(0, 60, 0, 60)
-	button.Position = position
-	button.Text = emoji
-	button.BackgroundColor3 = color
-	button.BackgroundTransparency = 0.3
-	button.TextScaled = true
-	button.TextColor3 = Color3.new(1, 1, 1)
-	button.Font = Enum.Font.SourceSansBold
-	button.Parent = screenGui
-
-	-- Squircle
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0.4, 0)
-	corner.Parent = button
-
-	-- Border glow
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.new(1, 1, 1)
-	stroke.Thickness = 2
-	stroke.Transparency = 0.6
-	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	stroke.Parent = button
-
-	button.MouseEnter:Connect(function()
-		TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0}):Play()
-	end)
-
-	button.MouseLeave:Connect(function()
-		TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0.6}):Play()
-	end)
-
-	-- Draggable logic
+-- Utility: Make any button draggable with tweening
+local function makeDraggable(button)
 	local dragging = false
 	local dragInput, dragStart, startPos
 
 	local function update(input)
 		local delta = input.Position - dragStart
-		button.Position = UDim2.new(
+		local goal = UDim2.new(
 			startPos.X.Scale,
 			startPos.X.Offset + delta.X,
 			startPos.Y.Scale,
 			startPos.Y.Offset + delta.Y
 		)
+		TweenService:Create(button, TweenInfo.new(0.1), {Position = goal}):Play()
 	end
 
 	button.InputBegan:Connect(function(input)
@@ -100,7 +68,6 @@ local function createAbilityButton(name, emoji, color, position, onClick)
 			dragging = true
 			dragStart = input.Position
 			startPos = button.Position
-
 			input.Changed:Connect(function()
 				if input.UserInputState == Enum.UserInputState.End then
 					dragging = false
@@ -120,8 +87,144 @@ local function createAbilityButton(name, emoji, color, position, onClick)
 			update(input)
 		end
 	end)
+end
 
-	button.MouseButton1Click:Connect(onClick)
+-- Lock Button
+local lockButton = Instance.new("TextButton")
+lockButton.Name = "LockToggle"
+lockButton.Size = UDim2.new(0, 40, 0, 40)
+lockButton.Position = UDim2.new(0.05, 70, 0.6, 0)
+lockButton.Text = "🔓"
+lockButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+lockButton.BackgroundTransparency = 0.2
+lockButton.TextColor3 = Color3.new(1, 1, 1)
+lockButton.Font = Enum.Font.SourceSansBold
+lockButton.TextScaled = true
+lockButton.Parent = screenGui
+
+Instance.new("UICorner", lockButton).CornerRadius = UDim.new(1, 0)
+makeDraggable(lockButton)
+
+lockButton.MouseButton1Click:Connect(function()
+	draggableEnabled = not draggableEnabled
+	lockButton.Text = draggableEnabled and "🔓" or "🔒"
+end)
+
+-- FPS Boost
+local fpsButton = Instance.new("TextButton")
+fpsButton.Name = "FpsBoostToggle"
+fpsButton.Size = UDim2.new(0, 40, 0, 40)
+fpsButton.Position = UDim2.new(0.05, 70, 0.6, 50)
+fpsButton.Text = "⚡"
+fpsButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+fpsButton.BackgroundTransparency = 0.2
+fpsButton.TextColor3 = Color3.new(1, 1, 1)
+fpsButton.Font = Enum.Font.SourceSansBold
+fpsButton.TextScaled = true
+fpsButton.Parent = screenGui
+
+Instance.new("UICorner", fpsButton).CornerRadius = UDim.new(1, 0)
+makeDraggable(fpsButton)
+
+local fpsBoostOn = false
+local originalMeshTextures = {}
+
+local function applyFPSBoost(state)
+	if state then
+		settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+		RunService:Set3dRenderingEnabled(true)
+		Lighting.GlobalShadows = false
+		Lighting.FogEnd = 100000
+		Lighting.Brightness = 1
+
+		if Terrain then
+			Terrain.WaterTransparency = 1
+			Terrain.WaterWaveSize = 0
+			Terrain.WaterReflectance = 0
+		end
+
+		for _, obj in ipairs(workspace:GetDescendants()) do
+			if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+				obj.Enabled = false
+			elseif obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("SurfaceAppearance") then
+				obj.Parent = nil
+			elseif obj:IsA("SpecialMesh") then
+				if obj.TextureId and obj.TextureId ~= "" then
+					originalMeshTextures[obj] = obj.TextureId
+					obj.TextureId = ""
+				end
+			end
+		end
+	else
+		settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+		Lighting.GlobalShadows = true
+		Lighting.FogEnd = 1000
+		Lighting.Brightness = 2
+
+		if Terrain then
+			Terrain.WaterTransparency = 0.5
+			Terrain.WaterWaveSize = 0.1
+			Terrain.WaterReflectance = 0.05
+		end
+
+		for _, obj in ipairs(workspace:GetDescendants()) do
+			if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+				obj.Enabled = true
+			elseif obj:IsA("SpecialMesh") and originalMeshTextures[obj] then
+				obj.TextureId = originalMeshTextures[obj]
+			end
+		end
+
+		originalMeshTextures = {}
+	end
+end
+
+fpsButton.MouseButton1Click:Connect(function()
+	fpsBoostOn = not fpsBoostOn
+	fpsButton.Text = fpsBoostOn and "✅" or "⚡"
+	applyFPSBoost(fpsBoostOn)
+end)
+
+-- Create Ability Buttons
+local function createAbilityButton(name, emoji, color, position, onClick)
+	local button = Instance.new("TextButton")
+	button.Name = name
+	button.Size = UDim2.new(0, 60, 0, 60)
+	button.Position = position
+	button.Text = emoji
+	button.BackgroundColor3 = color
+	button.BackgroundTransparency = 0.3
+	button.TextScaled = true
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.Font = Enum.Font.SourceSansBold
+	button.ZIndex = 5
+	button.Parent = screenGui
+
+	Instance.new("UICorner", button).CornerRadius = UDim.new(0.4, 0)
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.new(1, 1, 1)
+	stroke.Thickness = 2
+	stroke.Transparency = 0.6
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = button
+
+	local originalSize = button.Size
+	local pulseTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+
+	button.MouseEnter:Connect(function()
+		TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0}):Play()
+		TweenService:Create(button, pulseTweenInfo, {Size = UDim2.new(0, 66, 0, 66)}):Play()
+	end)
+
+	button.MouseLeave:Connect(function()
+		TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0.6}):Play()
+		TweenService:Create(button, pulseTweenInfo, {Size = originalSize}):Play()
+	end)
+
+	makeDraggable(button)
+
+	button.MouseButton1Click:Connect(debounce(onClick, 0.5))
 end
 
 -- Layout
@@ -129,36 +232,19 @@ local startX = 0.05
 local startY = 0.6
 local spacing = 0.07
 
--- 💧 Splitting Seas
+-- Buttons
 createAbilityButton("SplittingSeasButton", "💧", Color3.fromRGB(0, 200, 255), UDim2.new(startX, 0, startY, 0), function()
-	SplittingSeas:FireServer(
-		Vector3.new(24, 9, -139),
-		CFrame.new(39, 16, -131, -0, -0, 1, 0, 1, 0, -1, 0, -0)
-	)
+	SplittingSeas:FireServer(Vector3.new(24, 9, -139), CFrame.new(39, 16, -131, -0, -0, 1, 0, 1, 0, -1, 0, -0))
 end)
 
--- 💦 Water Orb
 createAbilityButton("WaterOrbButton", "💦", Color3.fromRGB(90, 180, 255), UDim2.new(startX, 0, startY + spacing, 0), function()
-	WaterOrb:FireServer(
-		Vector3.new(155, 53, -156),
-		CFrame.new(159, 67, -169, -1, 0, -0, 0, 1, 1, 1, 1, -1)
-	)
+	WaterOrb:FireServer(Vector3.new(155, 53, -156), CFrame.new(159, 67, -169, -1, 0, -0, 0, 1, 1, 1, 1, -1))
 end)
 
--- 🌊 Wave Ride
 createAbilityButton("WaveRideButton", "🌊", Color3.fromRGB(0, 140, 255), UDim2.new(startX, 0, startY + spacing * 2, 0), function()
-	WaveRide:FireServer(
-		Vector3.new(154, 53, -155),
-		CFrame.new(159, 67, -169, -1, 0, -0, 0, 1, 1, 1, 1, -1),
-		1
-	)
+	WaveRide:FireServer(Vector3.new(154, 53, -155), CFrame.new(159, 67, -169, -1, 0, -0, 0, 1, 1, 1, 1, -1), 1)
 end)
 
--- 🌀 Restoration
 createAbilityButton("RestorationButton", "🌀", Color3.fromRGB(100, 220, 180), UDim2.new(startX, 0, startY + spacing * 3, 0), function()
-	Restoration:FireServer(
-		Vector3.new(-164, 30, 162),
-		CFrame.new(-178, 41, 175, 1, 0, -0, 0, 1, 1, 0, -1, 1),
-		5
-	)
+	Restoration:FireServer(Vector3.new(-164, 30, 162), CFrame.new(-178, 41, 175, 1, 0, -0, 0, 1, 1, 0, -1, 1), 5)
 end)
