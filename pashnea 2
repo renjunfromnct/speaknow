@@ -17,6 +17,20 @@ local Restoration = ReplicatedStorage.RemoteEvents.Abilities["Restoration"]
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+
+-- Dynamic Aiming Utility
+local function getAimPosition()
+	local mouse = player:GetMouse()
+	local camera = workspace.CurrentCamera
+	local unitRay = camera:ScreenPointToRay(mouse.X, mouse.Y)
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterDescendantsInstances = {player.Character}
+	raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+	local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, raycastParams)
+	return result and result.Position or unitRay.Origin + unitRay.Direction * 1000
+end
+
+
 -- Cleanup old GUI if exists
 local oldGui = playerGui:FindFirstChild("AbilityButtonsGui")
 if oldGui then
