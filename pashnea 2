@@ -17,7 +17,6 @@ local Restoration = ReplicatedStorage.RemoteEvents.Abilities["Restoration"]
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-
 -- Dynamic Aiming Utility
 local function getAimPosition()
 	local mouse = player:GetMouse()
@@ -29,7 +28,6 @@ local function getAimPosition()
 	local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, raycastParams)
 	return result and result.Position or unitRay.Origin + unitRay.Direction * 1000
 end
-
 
 -- Cleanup old GUI if exists
 local oldGui = playerGui:FindFirstChild("AbilityButtonsGui")
@@ -46,19 +44,6 @@ screenGui.Parent = playerGui
 
 -- Global draggable toggle
 local draggableEnabled = true
-
--- Debounce utility
-local function debounce(fn, delay)
-	local busy = false
-	return function(...)
-		if busy then return end
-		busy = true
-		fn(...)
-		task.delay(delay, function()
-			busy = false
-		end)
-	end
-end
 
 -- Utility: Make any button draggable with tweening
 local function makeDraggable(button)
@@ -238,7 +223,8 @@ local function createAbilityButton(name, emoji, color, position, onClick)
 
 	makeDraggable(button)
 
-	button.MouseButton1Click:Connect(debounce(onClick, 0.5))
+	-- No cooldown
+	button.MouseButton1Click:Connect(onClick)
 end
 
 -- Layout
